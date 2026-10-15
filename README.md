@@ -21,6 +21,8 @@ Inspired by *Ready 2 Rumble Boxing* (the excitable, announcer-driven energy) and
 - [Research: Spades Rules & Southern Culture](docs/research-spades-southern-perspective.md) — the complete game, jokers, bidding slang, scoring, and the cultural texture
 - [Design & Competitor Analysis](docs/design-competitor-analysis.md) — Ready 2 Rumble inspiration, Apple Arcade baseline, and what makes us different
 - [Product Plan & Ideation](docs/product-plan.md) — dimensions, decisions, and the build approach
+- [Master Build Prompt](docs/build-prompt.md) — the self-contained AI prompt to build the app
+- [Model Selection & Tokenomics](docs/model-recommendations.md) — which models to use, ranked by fit and cost, with local options
 
 ---
 
