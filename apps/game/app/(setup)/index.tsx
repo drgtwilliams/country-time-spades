@@ -27,15 +27,22 @@ const DEFAULT_PRESET_KEY = 'cookout';
 /** A local editable copy of a preset's config. */
 interface EditableConfig extends GameConfig {
   presetKey: string;
+  /** Pass-and-play mode: no AI auto-play. */
+  passAndPlay: boolean;
+  /** Number of AI players (0-3). */
+  aiCount: number;
 }
 
 export default function SetupScreen() {
   const router = useRouter();
 
   const [presetKey, setPresetKey] = useState<string>(DEFAULT_PRESET_KEY);
+  const [passAndPlay, setPassAndPlay] = useState(false);
   const [editable, setEditable] = useState<EditableConfig>(() => ({
     ...HOUSE_RULE_PRESETS[DEFAULT_PRESET_KEY].config,
     presetKey: DEFAULT_PRESET_KEY,
+    passAndPlay: false,
+    aiCount: 3,
   }));
 
   const currentPresetName = HOUSE_RULE_PRESETS[presetKey]?.name ?? presetKey;
@@ -67,6 +74,8 @@ export default function SetupScreen() {
           bagThreshold: String(editable.bagThreshold),
           bagPenalty: String(editable.bagPenalty),
           targetScore: String(editable.targetScore),
+          passAndPlay: String(passAndPlay),
+          aiCount: String(editable.aiCount),
         },
       });
     } catch (err) {
@@ -160,6 +169,45 @@ export default function SetupScreen() {
 
       {/* Target score */}
       <NumberInput label="Target Score" value={editable.targetScore} onChange={(v) => setNumeric('targetScore', v)} />
+
+      {/* Play mode */}
+      <Text style={styles.sectionLabel}>Play Mode</Text>
+      <View style={styles.row}>
+        <Text style={styles.label}>Pass-and-Play</Text>
+        <Switch
+          value={passAndPlay}
+          onValueChange={(v) => {
+            setPassAndPlay(v);
+            setEditable((prev) => ({ ...prev, passAndPlay: v }));
+          }}
+        />
+      </View>
+      {!passAndPlay && (
+        <View style={styles.row}>
+          <Text style={styles.label}>AI Players</Text>
+          <View style={styles.aiCountRow}>
+            {[0, 1, 2, 3].map((n) => (
+              <Pressable
+                key={n}
+                style={[
+                  styles.aiCountBtn,
+                  editable.aiCount === n && styles.aiCountBtnActive,
+                ]}
+                onPress={() => {
+                  setEditable((prev) => ({ ...prev, aiCount: n }));
+                }}
+              >
+                <Text style={[
+                  styles.aiCountBtnText,
+                  editable.aiCount === n && styles.aiCountBtnTextActive,
+                ]}>
+                  {n}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Game over button */}
       <Pressable style={styles.playBtn} onPress={handleStartGame}>
@@ -258,6 +306,32 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     textAlign: 'right',
     fontSize: 15,
+  },
+  aiCountRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  aiCountBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  aiCountBtnActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  aiCountBtnText: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '600',
+  },
+  aiCountBtnTextActive: {
+    color: '#fff',
   },
   playBtn: {
     marginTop: 24,

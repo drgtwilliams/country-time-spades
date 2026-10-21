@@ -25,11 +25,28 @@ export default function TableView() {
   // Parse config from route params (passed by setup screen)
   const config = useMemo(() => parseConfigFromParams(params), [params]);
 
+  // Parse play mode
+  const passAndPlay = useMemo(() => {
+    const val = params.passAndPlay;
+    return val === 'true';
+  }, [params.passAndPlay]);
+
+  const aiCount = useMemo(() => {
+    const val = params.aiCount;
+    return val ? parseInt(val, 10) : 3;
+  }, [params.aiCount]);
+
+  // Determine human seat: in pass-and-play mode, seat 0 is still human
+  // In AI mode, humanSeat is 0 and all AI are 1-3
+  const humanSeat = passAndPlay ? DEFAULT_HUMAN_SEAT : DEFAULT_HUMAN_SEAT;
+
   // Initialize the game session
   const session = useGameState({
     config,
     seed: params.seed ?? `default-${Date.now()}`,
-    humanSeat: DEFAULT_HUMAN_SEAT,
+    humanSeat,
+    aiAutoPlay: !passAndPlay,
+    aiConfig: { playDelay: 1200, bidNoise: 0.1, smartBreak: true },
   });
 
   const [previousPhase, setPreviousPhase] = useState<Phase | null>(null);
