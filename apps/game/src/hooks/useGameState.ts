@@ -26,8 +26,9 @@ import {
   legalActions,
   currentActor,
 } from 'engine';
-import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession, TTSPlayer, STTPlayer, parseVoiceBid } from 'app-core';
+import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession, TTSPlayer, STTPlayer, AudioPlayer, parseVoiceBid } from 'app-core';
 import { CAST_MEMBERS } from 'content';
+import { EVENT_TO_SFX, ALL_SFX } from 'content/sfx';
 import { aiBid, aiPlayCard, getPlayDelay, type AIConfig } from '../utils/aiPlayer';
 
 export interface UseGameStateOptions {
@@ -126,6 +127,17 @@ export function useGameState({
     ttsRef.current = new TTSPlayer();
     ttsRef.current.setVolume(ttsVolume);
     ttsRef.current.setRate(ttsRate);
+  }
+
+  // Audio player — SFX management
+  const audioRef = useRef<AudioPlayer | null>(null);
+  if (!audioRef.current) {
+    audioRef.current = new AudioPlayer();
+    audioRef.current.setSFXVolume(0.5);
+    // Register all SFX definitions
+    for (const def of Object.values(ALL_SFX)) {
+      audioRef.current!.registerSFX(def);
+    }
   }
 
   // For local mode: create GameSession
@@ -296,6 +308,8 @@ export function useGameState({
   const selectCard = useCallback((cardId: string): void => {
     setSelectedCard(cardId);
     if (cardId && legalCards.includes(cardId)) {
+      // Play card slap SFX
+      audioRef.current?.play('cardSlap');
       const action: PlayAction = { type: 'Play', cardId };
       doAction(action);
       setSelectedCard(null);
@@ -310,10 +324,18 @@ export function useGameState({
     if (!session) return;
     const tts = ttsRef.current;
     if (!tts) return;
+    const audio = audioRef.current;
+    if (!audio) return;
 
     // Process each event that produced banter
     for (const event of events) {
       if (event.type === 'BidMade') continue;
+
+      // Play SFX for this event type
+      const sfxKey = EVENT_TO_SFX[event.type];
+      if (sfxKey) {
+        audio.play(sfxKey);
+      }
 
       // Determine which seats are active
       const activeSeats: Seat[] = [0, 1, 2, 3];

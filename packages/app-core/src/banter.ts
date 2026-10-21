@@ -221,6 +221,33 @@ export function selectAllBanterLines(
     }
   }
 
+  // Inject announcer beats for big moments (Set, Boston, NilMade, NilCaught, Boston, GameOver)
+  const announcerKey = getAnnouncerKey(event);
+  if (announcerKey && !session.isOnCooldown(`announcer:${announcerKey}`)) {
+    const beats = ANNOUNCER_BEATS[announcerKey];
+    if (beats && beats.length > 0) {
+      // Pick one, anti-repeat
+      const available = beats.filter((b) => {
+        const bid = `announcer:${b.text}`;
+        return !session.isUsed(bid);
+      });
+      if (available.length > 0) {
+        const beat = available[Math.floor(Math.random() * available.length)];
+        const beatId = `announcer:${beat.text}`;
+        session.markUsed(beatId);
+        session.markEventTriggered(`announcer:${announcerKey}`);
+        lines.unshift({
+          text: beat.text,
+          seat: null,
+          speaker: 'Announcer',
+          priority: beat.priority ?? 'high',
+          id: beatId,
+          timestamp: Date.now(),
+        });
+      }
+    }
+  }
+
   // Sort by priority (high first)
   lines.sort((a, b) => {
     const order = { high: 0, normal: 1, low: 2 };
@@ -229,4 +256,19 @@ export function selectAllBanterLines(
 
   // Enforce max stack
   return lines.slice(0, config.maxStack);
+}
+
+/** Map engine event types to ANNOUNCER_BEATS keys. */
+function getAnnouncerKey(event: EngineEvent): string | null {
+  const map: Record<string, string> = {
+    DealComplete: 'deal',
+    Set: 'set',
+    Boston: 'boston',
+    GameOver: 'gameOver',
+    NilMade: 'nilMade',
+    NilCaught: 'nilCaught',
+    BagThresholdHit: 'bagThreshold',
+    BreakSpades: 'spadeBreak',
+  };
+  return map[event.type] ?? null;
 }
