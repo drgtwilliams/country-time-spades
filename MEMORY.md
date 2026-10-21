@@ -1,0 +1,1 @@
+- [M1 Rules Engine Complete](m1-rules-engine-complete.md) — pure TS engine, 142 tests, 12 house-rule presets, 85%+ coverage

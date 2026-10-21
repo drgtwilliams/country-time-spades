@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Country Time Spades",
+    "slug": "country-time-spades",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "country-timespades",
+    "platforms": ["ios", "web"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.countrytimespades.game"
+    },
+    "web": {
+      "bundler": "webpack",
+      "output": "static"
+    }
+  }
+}

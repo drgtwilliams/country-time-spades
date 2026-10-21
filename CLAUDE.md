@@ -21,6 +21,7 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
 | `docs/product-plan.md` | Phased plan and dimensions (some questions resolved by the design doc). |
 | `docs/build-prompt.md` | Master build prompt; the non-negotiable principles and per-phase deliverables. |
 | `docs/model-recommendations.md` | User's model/token strategy for the build pipeline (cost discipline). |
+| `docs/implementation-plans/m2-playable-table.md` | M2 implementation plan — 5 sub-phases, file structure, component API. |
 
 ## Non-negotiable principles
 
@@ -36,9 +37,9 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
 - **Stack:** TypeScript monorepo, **Expo (React Native + expo-router)** — one UI app serving **iOS** (EAS builds) and **web** (expo-router web target; real DOM). pnpm workspaces.
 - **Layout:**
   - `packages/engine` — pure rules engine: `GameConfig`, immutable `GameState`, `legalActions()`, `applyAction() → {state, events}`, `scoreHand()`, `gameOver()`. Zero deps.
-  - `packages/content` — cast definitions, phrase banks, announcer lines, house-rule presets as versioned JSON. Content is data: reviewable, extendable, ready to bind to voice later.
-  - `packages/app-core` — UI-agnostic session driver (runs engine locally), banter selector (event → per-character bank → personality/relationship filters → anti-repeat → queue), persistence, a11y strings.
-  - `apps/game` — the Expo app (iOS + web): table, hand, bid pad, scoreboard (board/set/bags/"in the hole" vernacular), setup screen, speech-bubble feed, settings.
+  - `packages/content` — cast definitions, phrase banks, announcer lines, house-rule presets as versioned JSON. Content is data: reviewable, extendable, ready to bind to voice later. *(M2.1 created)*
+  - `packages/app-core` — UI-agnostic session driver (runs engine locally), banter selector (event → per-character bank → personality/relationship filters → anti-repeat → queue), persistence, a11y strings. *(M2.1 created — GameSession skeleton)*
+  - `apps/game` — the Expo app (iOS + web): table, hand, bid pad, scoreboard (board/set/bags/"in the hole" vernacular), setup screen, speech-bubble feed, settings. *(M2.1 scaffolded — setup screen + table shell)*
   - `apps/server` — *(M4 todo milestone)* thin WebSocket authoritative server running `engine`; friend-invite rooms. Built after the AI table is stable and the user's look-and-feel review passes.
 - The engine API is the entire client/server contract — solo play runs the same engine on-device that the future server will run authoritatively.
 
@@ -51,7 +52,7 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
 - **M4** Live-table server + friend invites (todo milestone after v1 stable)
 - **M5** Voice (dialect-reviewed TTS + optional on-device STT; text parity always)
 
-**Status: M1 not started — design approved, awaiting implementation plan.** Update this line as milestones land.
+**Status: M1 ✅ complete — 142 tests green across 17 test files. M2.1 scaffold in progress — content, app-core, game package created.**
 
 ## Conventions & guardrails
 

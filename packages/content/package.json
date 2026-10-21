@@ -1,0 +1,15 @@
+{
+  "name": "content",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./presets": "./src/presets.ts"
+  },
+  "dependencies": {
+    "engine": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9"
+  }
+}
