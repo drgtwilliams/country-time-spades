@@ -12,3 +12,6 @@ export type {
   DisplayBanterLine,
   BanterSession,
 } from './banter';
+
+export { WebSocketSession } from './WebSocketSession';
+export type { ISession } from './WebSocketSession';

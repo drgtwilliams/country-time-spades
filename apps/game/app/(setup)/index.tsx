@@ -3,6 +3,8 @@
  *
  * User picks a house-rule preset or customizes settings, then starts a game.
  * This is the entry point before any engine state exists.
+ *
+ * M4: "Multiplayer" button navigates to lobby for friend invites.
  */
 
 import { useState } from 'react';
@@ -209,9 +211,17 @@ export default function SetupScreen() {
         </View>
       )}
 
-      {/* Game over button */}
+      {/* Play button */}
       <Pressable style={styles.playBtn} onPress={handleStartGame}>
         <Text style={styles.playBtnText}>Play</Text>
+      </Pressable>
+
+      {/* Multiplayer button */}
+      <Pressable
+        style={styles.multiplayerBtn}
+        onPress={() => router.push('/(lobby)')}
+      >
+        <Text style={styles.multiplayerBtnText}>Multiplayer</Text>
       </Pressable>
     </ScrollView>
   );
@@ -343,6 +353,20 @@ const styles = StyleSheet.create({
   playBtnText: {
     color: '#fff',
     fontSize: 20,
+    fontWeight: 'bold',
+  },
+  multiplayerBtn: {
+    marginTop: 12,
+    paddingVertical: 16,
+    backgroundColor: '#16213E',
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+  },
+  multiplayerBtnText: {
+    color: '#60a5fa',
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });

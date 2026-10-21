@@ -1,5 +1,5 @@
 /**
- * useGameState — React hook that wraps GameSession for the UI layer.
+ * useGameState — React hook that wraps a session driver for the UI layer.
  *
  * Manages:
  * - Session lifecycle (create, apply actions)
@@ -8,9 +8,11 @@
  * - AI auto-play with configurable delays
  * - Banter selector — engine events → character phrases → display queue
  * - Legal action filtering
+ * - Multiplayer mode (WebSocketSession)
  *
  * M2: basic session + bid pad + card selection + AI auto-play.
  * M3: banter integration — events → phrases → speech bubbles.
+ * M4: multiplayer mode — local GameSession or remote WebSocketSession.
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -24,14 +26,7 @@ import {
   legalActions,
   currentActor,
 } from 'engine';
-import { GameSession, type GameSessionOptions } from 'app-core';
-import {
-  BanterSession,
-  selectAllBanterLines,
-  DEFAULT_BANTER_CONFIG,
-  type BanterConfig as CoreBanterConfig,
-  type DisplayBanterLine,
-} from 'app-core';
+import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession } from 'app-core';
 import { CAST_MEMBERS } from 'content';
 import { aiBid, aiPlayCard, getPlayDelay, type AIConfig } from '../utils/aiPlayer';
 
@@ -46,6 +41,14 @@ export interface UseGameStateOptions {
   aiAutoPlay?: boolean;
   /** Banter configuration. Set to null to disable banter. */
   banterConfig?: CoreBanterConfig | null;
+  /** Play mode: 'local' for solo, 'multiplayer' for networked. */
+  mode?: 'local' | 'multiplayer';
+  /** WebSocket server URL (multiplayer mode). */
+  serverUrl?: string;
+  /** Room invite code (multiplayer mode). */
+  roomCode?: string;
+  /** Player display name (multiplayer mode). */
+  playerName?: string;
 }
 
 export interface UseGameStateReturn {
@@ -82,6 +85,10 @@ export interface UseGameStateReturn {
   isAITable: boolean;
   /** Active banter lines for display. */
   banterLines: readonly DisplayBanterLine[];
+  /** Whether the session is connected (multiplayer mode). */
+  isConnected: boolean;
+  /** Leave the room (multiplayer mode). */
+  leaveRoom: () => void;
 }
 
 export function useGameState({
@@ -90,19 +97,72 @@ export function useGameState({
   humanSeat = -1,
   aiConfig = { playDelay: 1500, bidNoise: 0.1, smartBreak: true },
   aiAutoPlay = true,
+  banterConfig = DEFAULT_BANTER_CONFIG,
+  mode = 'local',
+  serverUrl = 'ws://localhost:3001/ws',
+  roomCode = '',
+  playerName = 'Player',
 }: UseGameStateOptions): UseGameStateReturn {
   // Session reference — stable across renders
-  const sessionRef = useRef<GameSession | null>(null);
-  if (!sessionRef.current) {
-    sessionRef.current = new GameSession({ config, seed });
+  const sessionRef = useRef<import('app-core').ISession | null>(null);
+
+  // For local mode: create GameSession
+  if (mode === 'local') {
+    if (!sessionRef.current) {
+      sessionRef.current = new GameSession({ config, seed });
+    }
+  } else {
+    // Multiplayer mode: create WebSocketSession
+    if (!sessionRef.current) {
+      sessionRef.current = new WebSocketSession({
+        serverUrl,
+        roomCode,
+        playerName,
+        isHost: false,
+      });
+    }
   }
 
-  const [state, setState] = useState<GameState>(sessionRef.current.state);
+  const initialSession = sessionRef.current;
+  const initialState = mode === 'local'
+    ? (initialSession as GameSession).state
+    : (initialSession as WebSocketSession);
+
+  const [state, setState] = useState<GameState>(initialState ?? createGame(config, seed));
   const [events, setEvents] = useState<readonly EngineEvent[]>([]);
   const [bidPadValue, setBidPadValue] = useState(0);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [banterLines, setBanterLines] = useState<DisplayBanterLine[]>([]);
+  const [isConnected, setIsConnected] = useState(mode === 'local' ? true : false);
   const banterSessionRef = useRef<BanterSession>(new BanterSession());
+
+  // For multiplayer mode: poll for state updates
+  useEffect(() => {
+    if (mode !== 'multiplayer') return;
+
+    const wsSession = sessionRef.current as WebSocketSession;
+
+    const handleStateReady = (_state: GameState, _code: string) => {
+      setState(_state);
+      setIsConnected(true);
+    };
+
+    wsSession.onStateReady = handleStateReady;
+    wsSession.onError = () => {
+      setIsConnected(false);
+    };
+
+    // Ping interval for connection health
+    const pingInterval = setInterval(() => {
+      wsSession.ping();
+    }, 30000);
+
+    return () => {
+      wsSession.onStateReady = undefined;
+      wsSession.onError = undefined;
+      clearInterval(pingInterval);
+    };
+  }, [mode]);
 
   // Whether it's the human's turn right now
   const isHumanTurn = useMemo(() => {
@@ -123,21 +183,37 @@ export function useGameState({
 
   const doAction = useCallback((action: Action): EngineEvent[] => {
     const session = sessionRef.current!;
-    const resultEvents = session.apply(action);
-    setState(session.state);
-    setEvents(resultEvents);
-    session.clearEvents();
+    let resultEvents: EngineEvent[];
+
+    if (mode === 'local') {
+      resultEvents = (session as GameSession).apply(action);
+      setState((session as GameSession).state);
+      setEvents(resultEvents);
+      (session as GameSession).clearEvents();
+    } else {
+      // Multiplayer: send to server, events arrive asynchronously
+      resultEvents = (session as WebSocketSession).apply(action);
+      // State updates come via WebSocket, not here
+    }
+
     return resultEvents;
-  }, []);
+  }, [mode]);
 
   const startNextHand = useCallback((): EngineEvent[] => {
     const session = sessionRef.current!;
-    const resultEvents = session.startNextHand();
-    setState(session.state);
-    setEvents(resultEvents);
-    session.clearEvents();
+    let resultEvents: EngineEvent[];
+
+    if (mode === 'local') {
+      resultEvents = (session as GameSession).startNextHand();
+      setState((session as GameSession).state);
+      setEvents(resultEvents);
+      (session as GameSession).clearEvents();
+    } else {
+      resultEvents = (session as WebSocketSession).startNextHand();
+    }
+
     return resultEvents;
-  }, []);
+  }, [mode]);
 
   const confirmBid = useCallback((amount: number): void => {
     const action: BidAction = { type: 'Bid', kind: 'number', amount };
@@ -165,7 +241,6 @@ export function useGameState({
 
   // Banter effect — process engine events into character banter lines
   useEffect(() => {
-    const banterConfig = banterConfigOpt;
     if (!banterConfig) return;
 
     const session = sessionRef.current;
@@ -173,12 +248,12 @@ export function useGameState({
 
     // Process each event that produced banter
     for (const event of events) {
-      if (event.type === 'BidMade' || event.type === 'Bid') continue; // bidding handled separately
+      if (event.type === 'BidMade') continue;
 
       // Determine which seats are active
       const activeSeats: Seat[] = [0, 1, 2, 3];
 
-      // Build seat-to-cast mapping
+      // Build seat-to-cast mapping (identity mapping for now)
       const seatToCastIndex: Record<Seat, number> = { 0: 0, 1: 1, 2: 2, 3: 3 };
 
       // Select banter lines
@@ -192,9 +267,7 @@ export function useGameState({
 
       if (lines.length > 0) {
         setBanterLines((prev) => {
-          // Merge: remove old lines that are still visible, add new ones
           const combined = [...prev, ...lines];
-          // Limit stack
           return combined.slice(-banterConfig.maxStack);
         });
 
@@ -205,10 +278,11 @@ export function useGameState({
         }, maxDuration);
       }
     }
-  }, [events]);
+  }, [events, banterConfig]);
 
-  // AI auto-play effect
+  // AI auto-play effect (local mode only)
   useEffect(() => {
+    if (mode === 'multiplayer') return; // multiplayer: server controls turns
     if (!aiAutoPlay) return;
 
     const actor = currentActor(state);
@@ -234,10 +308,16 @@ export function useGameState({
       }, getPlayDelay(aiConfig));
       return () => clearTimeout(timer);
     }
-  }, [state, aiAutoPlay, aiConfig, humanSeat, doAction]);
+  }, [state, aiAutoPlay, aiConfig, humanSeat, doAction, mode]);
 
   // Derived: bid pad is active when bidding and it's human's turn
   const bidPadActive = state.phase === 'bidding' && isHumanTurn;
+
+  const leaveRoom = useCallback(() => {
+    if (mode === 'multiplayer') {
+      (sessionRef.current as WebSocketSession).leave();
+    }
+  }, [mode]);
 
   return {
     state,
@@ -257,5 +337,10 @@ export function useGameState({
     startNextHand,
     isAITable: humanSeat < 0,
     banterLines,
+    isConnected,
+    leaveRoom,
   };
 }
+
+// Import createGame for initial state fallback
+import { createGame } from 'engine';

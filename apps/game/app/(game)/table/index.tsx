@@ -6,6 +6,10 @@
  *
  * On handOver: navigates to scoreboard.
  * On gameOver: shows final results on scoreboard.
+ *
+ * M4: supports both local (pass-through) and multiplayer (WebSocket) modes.
+ * Local mode: params from setup screen (seed, config, passAndPlay, aiCount).
+ * Multiplayer mode: mode=multiplayer, serverUrl, roomCode, playerName.
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
@@ -18,9 +22,17 @@ import { useGameState } from '../../src/hooks/useGameState';
 /** Default human seat for single-player. */
 const DEFAULT_HUMAN_SEAT = 0;
 
+/** Default WebSocket server URL. */
+const DEFAULT_SERVER_URL = 'ws://localhost:3001/ws';
+
 export default function TableView() {
   const router = useRouter();
   const params = useLocalSearchParams();
+
+  // Check if this is multiplayer mode
+  const isMultiplayer = useMemo(() => {
+    return params.mode === 'multiplayer';
+  }, [params.mode]);
 
   // Parse config from route params (passed by setup screen)
   const config = useMemo(() => parseConfigFromParams(params), [params]);
@@ -40,7 +52,7 @@ export default function TableView() {
   // In AI mode, humanSeat is 0 and all AI are 1-3
   const humanSeat = passAndPlay ? DEFAULT_HUMAN_SEAT : DEFAULT_HUMAN_SEAT;
 
-  // Initialize the game session
+  // Initialize the game session (local or multiplayer)
   const session = useGameState({
     config,
     seed: params.seed ?? `default-${Date.now()}`,
@@ -48,6 +60,10 @@ export default function TableView() {
     aiAutoPlay: !passAndPlay,
     aiConfig: { playDelay: 1200, bidNoise: 0.1, smartBreak: true },
     banterConfig: { density: 'medium', cooldownMs: 3000, maxStack: 3 },
+    mode: isMultiplayer ? 'multiplayer' : 'local',
+    serverUrl: (params.serverUrl as string) || DEFAULT_SERVER_URL,
+    roomCode: (params.roomCode as string) || '',
+    playerName: (params.playerName as string) || 'Player',
   });
 
   const [previousPhase, setPreviousPhase] = useState<Phase | null>(null);
