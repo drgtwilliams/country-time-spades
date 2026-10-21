@@ -52,7 +52,7 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
 - **M4** Live-table server + friend invites (todo milestone after v1 stable)
 - **M5** Voice (dialect-reviewed TTS + optional on-device STT; text parity always)
 
-**Status: M1 ✅ complete — 142 tests green across 17 test files. M2.1 scaffold in progress — content, app-core, game package created.**
+**Status: M1 ✅ complete — 142 tests green across 17 test files. M2 ✅ complete — full playable loop with AI, pass-and-play, scoreboard, setup screen. M3 not started.**
 
 ## Conventions & guardrails
 
