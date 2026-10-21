@@ -5,13 +5,14 @@
  * - Session lifecycle (create, apply actions)
  * - Bid pad state machine
  * - Card selection for trick play
+ * - AI auto-play with configurable delays
  * - Legal action filtering
  *
- * M2: basic session + bid pad + card selection.
- * M3: banter events, auto-play timing, AI decision hooks.
+ * M2: basic session + bid pad + card selection + AI auto-play.
+ * M3: banter events, relationship-aware AI, announcer queue.
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   type GameState,
   type Action,
@@ -22,12 +23,17 @@ import {
   currentActor,
 } from 'engine';
 import { GameSession, type GameSessionOptions } from 'app-core';
+import { aiBid, aiPlayCard, getPlayDelay, type AIConfig } from '../utils/aiPlayer';
 
 export interface UseGameStateOptions {
   config: import('engine').GameConfig;
   seed: string;
-  /** Seat of the human player (-1 for AI-only). */
+  /** Seat of the human player (-1 for AI-only table). */
   humanSeat?: number;
+  /** AI play configuration. */
+  aiConfig?: AIConfig;
+  /** Whether AI plays automatically (true = full AI table). */
+  aiAutoPlay?: boolean;
 }
 
 export interface UseGameStateReturn {
@@ -54,18 +60,22 @@ export interface UseGameStateReturn {
   selectedCard: string | null;
   /** Select a card to play. */
   selectCard: (cardId: string) => void;
-  /** Legal card IDs for the current player. */
+  /** Legal card IDs for the current actor during trick play. */
   legalCards: string[];
   /** Apply a game action. */
   doAction: (action: Action) => EngineEvent[];
   /** Start the next hand. */
   startNextHand: () => EngineEvent[];
+  /** Whether the table is all-AI (no human player). */
+  isAITable: boolean;
 }
 
 export function useGameState({
   config,
   seed,
   humanSeat = -1,
+  aiConfig = { playDelay: 1500, bidNoise: 0.1, smartBreak: true },
+  aiAutoPlay = true,
 }: UseGameStateOptions): UseGameStateReturn {
   // Session reference — stable across renders
   const sessionRef = useRef<GameSession | null>(null);
@@ -130,13 +140,41 @@ export function useGameState({
 
   const selectCard = useCallback((cardId: string): void => {
     setSelectedCard(cardId);
-    // In M2.3, auto-plays when a legal card is selected
     if (cardId && legalCards.includes(cardId)) {
       const action: PlayAction = { type: 'Play', cardId };
       doAction(action);
       setSelectedCard(null);
     }
   }, [legalCards, doAction]);
+
+  // AI auto-play effect
+  useEffect(() => {
+    if (!aiAutoPlay) return;
+
+    const actor = currentActor(state);
+    if (actor === null) return;
+    if (actor === humanSeat && humanSeat >= 0) return; // human's turn
+
+    // AI needs to act — determine if it's a bid or a play
+    if (state.phase === 'bidding') {
+      const timer = setTimeout(() => {
+        const bidAction = aiBid(state, actor as import('engine').Seat);
+        doAction(bidAction);
+      }, getPlayDelay(aiConfig));
+      return () => clearTimeout(timer);
+    }
+
+    if (state.phase === 'playing') {
+      const timer = setTimeout(() => {
+        const cardId = aiPlayCard(state, actor as import('engine').Seat);
+        if (cardId) {
+          const action: PlayAction = { type: 'Play', cardId };
+          doAction(action);
+        }
+      }, getPlayDelay(aiConfig));
+      return () => clearTimeout(timer);
+    }
+  }, [state, aiAutoPlay, aiConfig, humanSeat, doAction]);
 
   // Derived: bid pad is active when bidding and it's human's turn
   const bidPadActive = state.phase === 'bidding' && isHumanTurn;
@@ -157,5 +195,6 @@ export function useGameState({
     legalCards,
     doAction,
     startNextHand,
+    isAITable: humanSeat < 0,
   };
 }
