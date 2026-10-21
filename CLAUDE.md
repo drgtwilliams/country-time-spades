@@ -40,7 +40,7 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
   - `packages/content` — cast definitions, phrase banks, announcer lines, house-rule presets as versioned JSON. Content is data: reviewable, extendable, ready to bind to voice later. *(M2.1 created)*
   - `packages/app-core` — UI-agnostic session driver (runs engine locally), banter selector (event → per-character bank → personality/relationship filters → anti-repeat → queue), persistence, a11y strings. *(M2.1 created — GameSession skeleton)*
   - `apps/game` — the Expo app (iOS + web): table, hand, bid pad, scoreboard (board/set/bags/"in the hole" vernacular), setup screen, speech-bubble feed, settings. *(M2.1 scaffolded — setup screen + table shell)*
-  - `apps/server` — *(M4 todo milestone)* thin WebSocket authoritative server running `engine`; friend-invite rooms. Built after the AI table is stable and the user's look-and-feel review passes.
+  - `apps/server` — *(M4 complete)* thin WebSocket authoritative server running `engine`; friend-invite rooms.
 - The engine API is the entire client/server contract — solo play runs the same engine on-device that the future server will run authoritatively.
 
 ## Milestones & current status
@@ -49,10 +49,10 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
 - **M2** Playable text-first table on web + iOS (AI table, pass-and-play, setup, scoreboard)
 - **M3** Personality layer (6–8 cast, relationship-aware banter on every event type, announcer)
 - **M3.5** Look-and-feel review checkpoint — user gates the next phase
-- **M4** Live-table server + friend invites (todo milestone after v1 stable)
+- **M4** Live-table server + friend invites (WebSocket authoritative server; friend-invite rooms)
 - **M5** Voice (dialect-reviewed TTS + optional on-device STT; text parity always)
 
-**Status: M1 ✅ complete — 142 tests green across 17 test files. M2 ✅ complete — full playable loop on web + iOS. M3 ✅ complete — 6-character cast, 14/14 event types covered, banter selector, speech bubbles. M4 not started.**
+**Status: M1 ✅ complete — 142 tests green. M2 ✅ complete — full playable loop. M3 ✅ complete — 6-char cast, 14/14 events, banter. M4 ✅ complete — server + rooms + lobby + multiplayer table. M5 not started.**
 
 ## Conventions & guardrails
 
@@ -68,8 +68,10 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
 
 ```bash
 pnpm install              # deps
-pnpm -r test              # all tests
+pnpm -r test              # all tests (engine + server)
 pnpm --filter engine test -- --coverage   # rules engine tests
+pnpm --filter server dev                    # server dev mode (localhost:3001)
+pnpm --filter server start                  # server production mode
 pnpm --filter game web                    # web dev server
 pnpm --filter game ios                    # iOS via Expo
 ```
