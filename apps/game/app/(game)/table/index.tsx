@@ -8,8 +8,8 @@
  * On gameOver: shows final results on scoreboard.
  *
  * M4: supports both local (pass-through) and multiplayer (WebSocket) modes.
- * Local mode: params from setup screen (seed, config, passAndPlay, aiCount).
- * Multiplayer mode: mode=multiplayer, serverUrl, roomCode, playerName.
+ * M5.4: voice settings passed from setup screen (avatar voice, announcer,
+ * per-character toggles, voice input).
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
@@ -48,6 +48,22 @@ export default function TableView() {
     return val ? parseInt(val, 10) : 3;
   }, [params.aiCount]);
 
+  // Parse voice settings from route params
+  const avatarVoice = useMemo(() => {
+    const val = params.avatarVoice;
+    return val === undefined ? true : val === 'true';
+  }, [params.avatarVoice]);
+
+  const announcerVoice = useMemo(() => {
+    const val = params.announcerVoice;
+    return val === undefined ? true : val === 'true';
+  }, [params.announcerVoice]);
+
+  const voiceInputEnabled = useMemo(() => {
+    const val = params.voiceInput;
+    return val === 'true';
+  }, [params.voiceInput]);
+
   // Determine human seat: in pass-and-play mode, seat 0 is still human
   // In AI mode, humanSeat is 0 and all AI are 1-3
   const humanSeat = passAndPlay ? DEFAULT_HUMAN_SEAT : DEFAULT_HUMAN_SEAT;
@@ -64,6 +80,12 @@ export default function TableView() {
     serverUrl: (params.serverUrl as string) || DEFAULT_SERVER_URL,
     roomCode: (params.roomCode as string) || '',
     playerName: (params.playerName as string) || 'Player',
+    ttsVolume: params.ttsVolume ? parseFloat(params.ttsVolume) : 0.7,
+    ttsRate: params.ttsRate ? parseFloat(params.ttsRate) : 1,
+    avatarVoice,
+    announcerVoice,
+    characterVoices: {}, // TODO: pass per-character toggles from setup screen
+    voiceEnabled: voiceInputEnabled,
   });
 
   const [previousPhase, setPreviousPhase] = useState<Phase | null>(null);

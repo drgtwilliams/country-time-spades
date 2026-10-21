@@ -9,10 +9,12 @@
  * - Banter selector — engine events → character phrases → display queue
  * - Legal action filtering
  * - Multiplayer mode (WebSocketSession)
+ * - Voice settings — per-character TTS toggles, announcer gate, SFX
  *
  * M2: basic session + bid pad + card selection + AI auto-play.
  * M3: banter integration — events → phrases → speech bubbles.
  * M4: multiplayer mode — local GameSession or remote WebSocketSession.
+ * M5.4: voice settings wired — per-character toggles, announcer gate, SFX.
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -26,8 +28,21 @@ import {
   legalActions,
   currentActor,
 } from 'engine';
-import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession, TTSPlayer, STTPlayer, AudioPlayer, parseVoiceBid } from 'app-core';
-import { CAST_MEMBERS } from 'content';
+import {
+  GameSession,
+  BanterSession,
+  selectAllBanterLines,
+  DEFAULT_BANTER_CONFIG,
+  type BanterConfig as CoreBanterConfig,
+  type DisplayBanterLine,
+  WebSocketSession,
+  TTSPlayer,
+  STTPlayer,
+  AudioPlayer,
+  TTSPlayerMute,
+  parseVoiceBid,
+} from 'app-core';
+import { CAST_MEMBERS, getCastMember } from 'content';
 import { EVENT_TO_SFX, ALL_SFX } from 'content/sfx';
 import { aiBid, aiPlayCard, getPlayDelay, type AIConfig } from '../utils/aiPlayer';
 
@@ -54,6 +69,12 @@ export interface UseGameStateOptions {
   ttsVolume?: number;
   /** TTS rate (0.5–2x, default 1). */
   ttsRate?: number;
+  /** Whether avatar TTS is enabled (default true). */
+  avatarVoice?: boolean;
+  /** Whether announcer TTS is enabled (default true). */
+  announcerVoice?: boolean;
+  /** Per-character TTS toggles keyed by character id (default true for all). */
+  characterVoices?: Record<string, boolean>;
   /** Whether voice input (STT) is enabled. */
   voiceEnabled?: boolean;
 }
@@ -117,6 +138,10 @@ export function useGameState({
   playerName = 'Player',
   ttsVolume = 0.7,
   ttsRate = 1,
+  avatarVoice = true,
+  announcerVoice = true,
+  characterVoices = {},
+  voiceEnabled: initialVoiceEnabled = false,
 }: UseGameStateOptions): UseGameStateReturn {
   // Session reference — stable across renders
   const sessionRef = useRef<import('app-core').ISession | null>(null);
@@ -168,7 +193,7 @@ export function useGameState({
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [banterLines, setBanterLines] = useState<DisplayBanterLine[]>([]);
   const [isConnected, setIsConnected] = useState(mode === 'local' ? true : false);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(initialVoiceEnabled);
   const [sttInterimText, setSttInterimText] = useState<string>('');
   const banterSessionRef = useRef<BanterSession>(new BanterSession());
 
@@ -331,7 +356,7 @@ export function useGameState({
     for (const event of events) {
       if (event.type === 'BidMade') continue;
 
-      // Play SFX for this event type
+      // Play SFX for this event type (always, regardless of voice settings)
       const sfxKey = EVENT_TO_SFX[event.type];
       if (sfxKey) {
         audio.play(sfxKey);
@@ -353,14 +378,18 @@ export function useGameState({
       );
 
       if (lines.length > 0) {
-        // Speak each line via TTS (non-blocking)
+        // Speak each line via TTS (non-blocking), gated by voice settings
         for (const line of lines) {
-          // Use character name as voice ID (TTSPlayer maps it to platform voice)
-          if (line.character) {
-            tts.speak(line.text, line.character.name);
-          } else if (line.speaker) {
-            // Announcer or unnamed speaker
+          if (line.speaker === 'Announcer') {
+            // Gate announcer lines behind announcerVoice
+            if (!announcerVoice || !avatarVoice) continue;
             tts.speak(line.text, 'announcer');
+          } else if (line.character) {
+            // Gate character voices behind per-character toggle AND avatarVoice
+            const charId = line.character.id;
+            const charEnabled = characterVoices[charId] ?? true;
+            if (!avatarVoice || !charEnabled) continue;
+            tts.speak(line.text, line.character.name);
           }
         }
 
@@ -376,7 +405,7 @@ export function useGameState({
         }, maxDuration);
       }
     }
-  }, [events, banterConfig]);
+  }, [events, banterConfig, announcerVoice, avatarVoice, characterVoices]);
 
   // AI auto-play effect (local mode only)
   useEffect(() => {

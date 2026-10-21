@@ -60,8 +60,9 @@ export function Card({
     >
       {faceDown ? (
         <View style={[styles.faceDown, { borderRadius: dims.width / 10 }]} />
-      ) : display ? (
-        <>
+      ) : (
+        display ? (
+          <>
           {/* Top-left rank + suit */}
           <View style={[styles.corner, styles.topLeft]}>
             <Text style={[styles.rankText, { fontSize: dims.fontSize, color: display.color }]}>
@@ -91,6 +92,7 @@ export function Card({
             </Text>
           </View>
         </>
+        ) : null
       )}
     </View>
   );

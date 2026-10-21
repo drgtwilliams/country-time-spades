@@ -5,6 +5,7 @@
  * This is the entry point before any engine state exists.
  *
  * M4: "Multiplayer" button navigates to lobby for friend invites.
+ * M5.4: per-character voice toggles, player STT toggle, all voice settings passed to table.
  */
 
 import { useState } from 'react';
@@ -19,7 +20,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { HOUSE_RULE_PRESETS, type HouseRulePreset, CAST_MEMBERS } from 'content';
+import { HOUSE_RULE_PRESETS, type HouseRulePreset, CAST_MEMBERS, getVoiceMapping } from 'content';
 import { GameSession } from 'app-core';
 import type { GameConfig } from 'engine';
 
@@ -51,10 +52,13 @@ export default function SetupScreen() {
   const [avatarVoice, setAvatarVoice] = useState(true);
   const [announcerVoice, setAnnouncerVoice] = useState(true);
   const [ttsSpeed, setTTSSpeed] = useState(1);
-  const [perCharacterVoice, setPerCharacterVoice] = useState<Record<string, boolean>>(() => {
+  const [voiceInputEnabled, setVoiceInputEnabled] = useState(false);
+
+  // Per-character voice toggles (keyed by character id)
+  const [characterVoices, setCharacterVoices] = useState<Record<string, boolean>>(() => {
     const map: Record<string, boolean> = {};
     for (const c of CAST_MEMBERS) {
-      map[c.name] = c.name !== 'Silent Sam'; // Sam is silent
+      map[c.id] = c.id !== 'silent-sam'; // Sam is silent by design
     }
     return map;
   });
@@ -94,6 +98,7 @@ export default function SetupScreen() {
           ttsRate: String(ttsSpeed),
           avatarVoice: String(avatarVoice),
           announcerVoice: String(announcerVoice),
+          voiceInput: String(voiceInputEnabled),
         },
       });
     } catch (err) {
@@ -120,6 +125,11 @@ export default function SetupScreen() {
     if (!preset) return;
     setPresetKey(key);
     setEditable((prev) => ({ ...preset.config, presetKey: key }));
+  }
+
+  /** Toggle a single character's voice. */
+  function toggleCharacterVoice(charId: string) {
+    setCharacterVoices((prev) => ({ ...prev, [charId]: !prev[charId] }));
   }
 
   return (
@@ -259,6 +269,28 @@ export default function SetupScreen() {
           ))}
         </View>
       </View>
+
+      {/* Player STT toggle */}
+      <View style={styles.row}>
+        <Text style={styles.label}>Voice Input</Text>
+        <Switch
+          value={voiceInputEnabled}
+          onValueChange={setVoiceInputEnabled}
+        />
+      </View>
+
+      {/* Per-character voice toggles */}
+      <Text style={styles.charVoicesLabel}>Character Voices</Text>
+      {CAST_MEMBERS.filter((c) => c.active).map((c) => (
+        <View key={c.id} style={[styles.row, styles.charVoiceRow]}>
+          <Text style={styles.charVoiceName}>{c.name}</Text>
+          <Switch
+            value={characterVoices[c.id] ?? true}
+            onValueChange={() => toggleCharacterVoice(c.id)}
+            disabled={c.id === 'silent-sam'}
+          />
+        </View>
+      ))}
 
       {/* Play button */}
       <Pressable style={styles.playBtn} onPress={handleStartGame}>
@@ -442,5 +474,20 @@ const styles = StyleSheet.create({
   },
   ttsSpeedBtnTextActive: {
     color: '#fff',
+  },
+  charVoicesLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#555',
+    marginTop: 8,
+    marginBottom: 4,
+    paddingLeft: 4,
+  },
+  charVoiceRow: {
+    paddingLeft: 4,
+  },
+  charVoiceName: {
+    fontSize: 14,
+    flex: 1,
   },
 });
