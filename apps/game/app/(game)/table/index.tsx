@@ -3,12 +3,15 @@
  *
  * Uses the useGameState hook to drive the Table component with live
  * engine state. Bid pad, card selection, trick center all wired up.
+ *
+ * On handOver: navigates to scoreboard.
+ * On gameOver: shows final results on scoreboard.
  */
 
-import { useCallback, useMemo, useState } from 'react';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { Alert, SafeAreaView, StyleSheet, View } from 'react-native';
-import { DEFAULT_CONFIG, validateConfig, type GameConfig } from 'engine';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { DEFAULT_CONFIG, type GameConfig, type Phase } from 'engine';
 import { Table } from '../../src/components/Table';
 import { useGameState } from '../../src/hooks/useGameState';
 
@@ -28,6 +31,19 @@ export default function TableView() {
     seed: params.seed ?? `default-${Date.now()}`,
     humanSeat: DEFAULT_HUMAN_SEAT,
   });
+
+  const [previousPhase, setPreviousPhase] = useState<Phase | null>(null);
+
+  // Detect handOver → navigate to scoreboard
+  useEffect(() => {
+    if (previousPhase === 'playing' && session.state.phase === 'handOver') {
+      router.push({
+        pathname: '(game)/scoreboard',
+        params: { seed: params.seed },
+      });
+    }
+    setPreviousPhase(session.state.phase);
+  }, [session.state.phase, previousPhase, router, params.seed]);
 
   // Bid pad confirmation
   const handleBid = useCallback(
@@ -60,6 +76,17 @@ export default function TableView() {
     },
     [session],
   );
+
+  // Start next hand from scoreboard
+  const handleNewHand = useCallback(() => {
+    session.startNextHand();
+    router.back();
+  }, [session, router]);
+
+  // Reset to setup screen
+  const handleNewGame = useCallback(() => {
+    router.replace({ pathname: '(setup)' });
+  }, [router]);
 
   return (
     <SafeAreaView style={styles.container}>
