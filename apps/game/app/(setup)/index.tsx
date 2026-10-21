@@ -43,14 +43,31 @@ export default function SetupScreen() {
   /** Merge preset defaults into editable config, then validate. */
   function handleStartGame() {
     try {
+      // Validate the config against engine rules
+      import('engine').validateConfig(editable);
+
       const session = new GameSession({
         config: editable,
         seed: `m2-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       });
-      // Navigate to table with the session
+
+      // Navigate to table with config + seed
       router.push({
         pathname: '(game)/table',
-        params: { seed: session.state.seed },
+        params: {
+          seed: session.state.seed,
+          deckMode: editable.deckMode,
+          allowNil: String(editable.allowNil),
+          allowBlindNil: String(editable.allowBlindNil),
+          nilBonus: String(editable.nilBonus),
+          nilPenalty: String(editable.nilPenalty),
+          blindNilBonus: String(editable.blindNilBonus),
+          blindNilPenalty: String(editable.blindNilPenalty),
+          bagPenaltyEnabled: String(editable.bagPenaltyEnabled),
+          bagThreshold: String(editable.bagThreshold),
+          bagPenalty: String(editable.bagPenalty),
+          targetScore: String(editable.targetScore),
+        },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start game';
