@@ -14,7 +14,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { DEFAULT_CONFIG, type GameConfig, type Phase } from 'engine';
 import { Table } from '../../src/components/Table';
 import { useGameState } from '../../src/hooks/useGameState';
@@ -119,11 +119,21 @@ export default function TableView() {
 
   // Reset to setup screen
   const handleNewGame = useCallback(() => {
+    if (isMultiplayer) {
+      session.leaveRoom();
+    }
     router.replace({ pathname: '(setup)' });
-  }, [router]);
+  }, [router, isMultiplayer, session]);
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Connection status indicator (multiplayer mode) */}
+      {isMultiplayer && !session.isConnected && (
+        <View style={styles.statusBar}>
+          <View style={styles.statusDotOffline} />
+          <Text style={styles.statusText}>Reconnecting...</Text>
+        </View>
+      )}
       <Table
         gameState={session.state}
         humanSeat={session.humanSeat}
@@ -176,5 +186,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a5c2a',
+  },
+  statusBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#7F1D1D',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    zIndex: 100,
+    gap: 8,
+  },
+  statusDotOffline: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FCA5A5',
+  },
+  statusText: {
+    color: '#FCA5A5',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
