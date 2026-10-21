@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { HOUSE_RULE_PRESETS, type HouseRulePreset } from 'content';
+import { HOUSE_RULE_PRESETS, type HouseRulePreset, CAST_MEMBERS } from 'content';
 import { GameSession } from 'app-core';
 import type { GameConfig } from 'engine';
 
@@ -46,6 +46,18 @@ export default function SetupScreen() {
     passAndPlay: false,
     aiCount: 3,
   }));
+
+  // Voice settings
+  const [avatarVoice, setAvatarVoice] = useState(true);
+  const [announcerVoice, setAnnouncerVoice] = useState(true);
+  const [ttsSpeed, setTTSSpeed] = useState(1);
+  const [perCharacterVoice, setPerCharacterVoice] = useState<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {};
+    for (const c of CAST_MEMBERS) {
+      map[c.name] = c.name !== 'Silent Sam'; // Sam is silent
+    }
+    return map;
+  });
 
   const currentPresetName = HOUSE_RULE_PRESETS[presetKey]?.name ?? presetKey;
 
@@ -78,6 +90,10 @@ export default function SetupScreen() {
           targetScore: String(editable.targetScore),
           passAndPlay: String(passAndPlay),
           aiCount: String(editable.aiCount),
+          ttsVolume: String(0.7),
+          ttsRate: String(ttsSpeed),
+          avatarVoice: String(avatarVoice),
+          announcerVoice: String(announcerVoice),
         },
       });
     } catch (err) {
@@ -210,6 +226,39 @@ export default function SetupScreen() {
           </View>
         </View>
       )}
+
+      {/* Voice settings */}
+      <Text style={styles.sectionLabel}>Voice</Text>
+      <View style={styles.row}>
+        <Text style={styles.label}>Avatar Voice</Text>
+        <Switch value={avatarVoice} onValueChange={setAvatarVoice} />
+      </View>
+      <View style={styles.row}>
+        <Text style={styles.label}>Announcer Voice</Text>
+        <Switch value={announcerVoice} onValueChange={setAnnouncerVoice} />
+      </View>
+      <View style={styles.row}>
+        <Text style={styles.label}>TTS Speed</Text>
+        <View style={styles.ttsSpeedRow}>
+          {[0.75, 1, 1.25, 1.5].map((s) => (
+            <Pressable
+              key={s}
+              style={[
+                styles.ttsSpeedBtn,
+                Math.abs(ttsSpeed - s) < 0.01 && styles.ttsSpeedBtnActive,
+              ]}
+              onPress={() => setTTSSpeed(s)}
+            >
+              <Text style={[
+                styles.ttsSpeedBtnText,
+                Math.abs(ttsSpeed - s) < 0.01 && styles.ttsSpeedBtnTextActive,
+              ]}>
+                {s}x
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
 
       {/* Play button */}
       <Pressable style={styles.playBtn} onPress={handleStartGame}>
@@ -368,5 +417,30 @@ const styles = StyleSheet.create({
     color: '#60a5fa',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  ttsSpeedRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  ttsSpeedBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  ttsSpeedBtnActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  ttsSpeedBtnText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
+  ttsSpeedBtnTextActive: {
+    color: '#fff',
   },
 });

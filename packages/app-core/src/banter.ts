@@ -51,6 +51,8 @@ export interface DisplayBanterLine {
   seat: Seat | null;
   /** Speaker's name (for debugging/announcer). */
   speaker?: string;
+  /** Cast member of the speaker (for TTS voice lookup). */
+  character?: import('content').CastMember;
   /** Priority. */
   priority: 'normal' | 'high' | 'low';
   /** Unique ID for anti-repeat. */
@@ -154,6 +156,7 @@ export function selectBanterLine(
     text: selected.text,
     seat,
     speaker: castMember.name,
+    character: castMember,
     priority,
     id: lineId,
     timestamp: Date.now(),

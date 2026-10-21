@@ -15,3 +15,12 @@ export type {
 
 export { WebSocketSession } from './WebSocketSession';
 export type { ISession } from './WebSocketSession';
+
+export { TTSPlayer, TTSPlayerMute } from './tts';
+export type { TTSCallbacks } from './tts';
+
+export { STTPlayer } from './stt';
+export type { STTCallbacks } from './stt';
+
+export { AudioPlayer } from './audio';
+export type { SFXDef } from './audio';

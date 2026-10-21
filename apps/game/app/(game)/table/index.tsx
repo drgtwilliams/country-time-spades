@@ -14,7 +14,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DEFAULT_CONFIG, type GameConfig, type Phase } from 'engine';
 import { Table } from '../../src/components/Table';
 import { useGameState } from '../../src/hooks/useGameState';
@@ -127,6 +127,9 @@ export default function TableView() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Mute button (top-right) */}
+      <MuteButton />
+
       {/* Connection status indicator (multiplayer mode) */}
       {isMultiplayer && !session.isConnected && (
         <View style={styles.statusBar}>
@@ -148,6 +151,35 @@ export default function TableView() {
         banterLines={session.banterLines}
       />
     </SafeAreaView>
+  );
+}
+
+// --- Mute button ---
+
+import { TTSPlayerMute } from 'app-core';
+
+/** Global mute singleton — checked by TTSPlayer on each speak call. */
+const muteState = { muted: false };
+
+function MuteButton() {
+  const [muted, setMuted] = useState(muteState.muted);
+
+  const toggleMute = useCallback(() => {
+    muteState.muted = !muted;
+    TTSPlayerMute.muted = muteState.muted;
+    setMuted(muteState.muted);
+  }, [muted]);
+
+  return (
+    <TouchableOpacity
+      style={styles.muteBtn}
+      onPress={toggleMute}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.muteBtnText}>{muted ? '🔇' : '🔊'}</Text>
+    </TouchableOpacity>
+  );
+}
   );
 }
 
@@ -211,5 +243,20 @@ const styles = StyleSheet.create({
     color: '#FCA5A5',
     fontSize: 13,
     fontWeight: '600',
+  },
+  muteBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 12,
+    zIndex: 200,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 8,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  muteBtnText: {
+    fontSize: 18,
   },
 });

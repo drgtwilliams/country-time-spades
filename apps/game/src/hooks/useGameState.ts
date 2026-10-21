@@ -26,7 +26,7 @@ import {
   legalActions,
   currentActor,
 } from 'engine';
-import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession } from 'app-core';
+import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession, TTSPlayer } from 'app-core';
 import { CAST_MEMBERS } from 'content';
 import { aiBid, aiPlayCard, getPlayDelay, type AIConfig } from '../utils/aiPlayer';
 
@@ -49,6 +49,10 @@ export interface UseGameStateOptions {
   roomCode?: string;
   /** Player display name (multiplayer mode). */
   playerName?: string;
+  /** TTS volume (0–1, default 0.7). */
+  ttsVolume?: number;
+  /** TTS rate (0.5–2x, default 1). */
+  ttsRate?: number;
 }
 
 export interface UseGameStateReturn {
@@ -102,9 +106,19 @@ export function useGameState({
   serverUrl = 'ws://localhost:3001/ws',
   roomCode = '',
   playerName = 'Player',
+  ttsVolume = 0.7,
+  ttsRate = 1,
 }: UseGameStateOptions): UseGameStateReturn {
   // Session reference — stable across renders
   const sessionRef = useRef<import('app-core').ISession | null>(null);
+
+  // TTS player — singleton for this hook instance
+  const ttsRef = useRef<TTSPlayer | null>(null);
+  if (!ttsRef.current) {
+    ttsRef.current = new TTSPlayer();
+    ttsRef.current.setVolume(ttsVolume);
+    ttsRef.current.setRate(ttsRate);
+  }
 
   // For local mode: create GameSession
   if (mode === 'local') {
@@ -245,6 +259,8 @@ export function useGameState({
 
     const session = sessionRef.current;
     if (!session) return;
+    const tts = ttsRef.current;
+    if (!tts) return;
 
     // Process each event that produced banter
     for (const event of events) {
@@ -266,12 +282,23 @@ export function useGameState({
       );
 
       if (lines.length > 0) {
+        // Speak each line via TTS (non-blocking)
+        for (const line of lines) {
+          // Use character name as voice ID (TTSPlayer maps it to platform voice)
+          if (line.character) {
+            tts.speak(line.text, line.character.name);
+          } else if (line.speaker) {
+            // Announcer or unnamed speaker
+            tts.speak(line.text, 'announcer');
+          }
+        }
+
         setBanterLines((prev) => {
           const combined = [...prev, ...lines];
           return combined.slice(-banterConfig.maxStack);
         });
 
-        // Auto-dismiss after 3 seconds
+        // Auto-dismiss after 3 seconds (or TTS completion, whichever is longer)
         const maxDuration = Math.max(...lines.map((l) => 3500));
         setTimeout(() => {
           setBanterLines((prev) => prev.slice(1)); // remove oldest
