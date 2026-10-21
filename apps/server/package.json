@@ -1,0 +1,25 @@
+{
+  "name": "server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.21",
+    "ws": "^8.18",
+    "engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17",
+    "@types/ws": "^8.5",
+    "tsx": "^4.19",
+    "typescript": "^5.9",
+    "vitest": "^3.2",
+    "@vitest/coverage-v8": "^3.2"
+  }
+}
