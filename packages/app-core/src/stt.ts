@@ -43,6 +43,7 @@ export class STTPlayer {
   private confidenceThreshold = 0.5;
   private language = 'en-US';
   private interimEnabled = true;
+  private _ended = false; // guard against double onEnd
 
   /**
    * Start voice recognition.
@@ -62,6 +63,7 @@ export class STTPlayer {
    */
   stop(): string | null {
     this.listening = false;
+    this._ended = true;
     this.platformStop();
     this.callbacks.onEnd?.();
     return this._lastTranscript;
@@ -72,6 +74,7 @@ export class STTPlayer {
    */
   cancel(): string | null {
     this.listening = false;
+    this._ended = true;
     this._lastTranscript = null;
     this.platformCancel();
     this.callbacks.onEnd?.();
@@ -211,6 +214,7 @@ export class STTPlayer {
     };
 
     recognition.onend = () => {
+      if (this._ended) return; // stop()/cancel() already fired onEnd
       this.listening = false;
       this.callbacks.onEnd?.();
     };

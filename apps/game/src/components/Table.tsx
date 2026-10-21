@@ -44,6 +44,12 @@ export interface TableProps {
   bidPadValue: number;
   /** Active banter lines from M3 personality layer. */
   banterLines?: import('app-core').DisplayBanterLine[];
+  /** Whether voice input is enabled. */
+  voiceEnabled?: boolean;
+  /** Toggle voice input on/off. */
+  onVoiceToggle?: (enabled: boolean) => void;
+  /** Live STT interim transcription text. */
+  sttInterimText?: string;
 }
 
 /** Default AI player names for M2. */
@@ -66,6 +72,9 @@ export function Table({
   bidPadActive,
   bidPadValue,
   banterLines = [],
+  voiceEnabled = false,
+  onVoiceToggle,
+  sttInterimText = '',
 }: TableProps) {
   const { phase, dealer, bids, hands, currentTrick, spadesBroken, handNumber } = gameState;
 
@@ -185,8 +194,11 @@ export function Table({
             <BidPad
               currentBid={bidPadValue}
               active={isBiddingHuman}
+              voiceListening={voiceEnabled}
+              sttInterimText={sttInterimText}
               onConfirm={onBid ?? (() => {})}
               onCancel={() => {}}
+              onMicToggle={onVoiceToggle}
               style={styles.bidPad}
             />
           )}

@@ -2,7 +2,7 @@
  * BidPad — number pad for placing bids.
  *
  * Shows digits 0-9, confirm and cancel buttons.
- * Disabled during AI turns.
+ * Disabled during AI turns. Includes mic button for voice input.
  */
 
 import React, { useState, useMemo } from 'react';
@@ -22,10 +22,16 @@ export interface BidPadProps {
   maxBid?: number;
   /** Whether the bid pad is active. */
   active: boolean;
+  /** Whether voice input is listening. */
+  voiceListening?: boolean;
+  /** Live STT interim transcription text. */
+  sttInterimText?: string;
   /** Called when bid is confirmed. */
   onConfirm: (bid: number) => void;
   /** Called when cancel is pressed. */
   onCancel: () => void;
+  /** Called when voice recognition starts/stops. */
+  onMicToggle?: (listening: boolean) => void;
   /** Custom style for the container. */
   style?: StyleProp<ViewStyle>;
 }
@@ -34,8 +40,11 @@ export function BidPad({
   currentBid,
   maxBid = 9,
   active,
+  voiceListening = false,
+  sttInterimText = '',
   onConfirm,
   onCancel,
+  onMicToggle,
   style,
 }: BidPadProps) {
   const [digits, setDigits] = useState<number[]>([]);
@@ -45,7 +54,14 @@ export function BidPad({
     return digits.join('');
   }, [digits]);
 
+  // When voice listening with interim text, show that instead of digits
+  const isShowingStt = voiceListening && sttInterimText.length > 0;
+
   const isValid = digits.length > 0 && parseInt(displayValue, 10) <= maxBid;
+
+  function pressMic() {
+    onMicToggle?.(!voiceListening);
+  }
 
   function pressDigit(d: number) {
     if (!active) return;
@@ -74,8 +90,14 @@ export function BidPad({
     <View style={[styles.container, !active && styles.inactive, style]}>
       {/* Display */}
       <View style={styles.displayRow}>
-        <Text style={styles.displayText}>
-          {active ? displayValue : 'Waiting...'}
+        {active && voiceListening && (
+          <View style={styles.listeningIndicator}>
+            <View style={styles.listeningDot} />
+            <Text style={styles.listeningText}>Listening...</Text>
+          </View>
+        )}
+        <Text style={[styles.displayText, isShowingStt && styles.sttText]}>
+          {isShowingStt ? `"${sttInterimText}"` : active ? displayValue : 'Waiting...'}
         </Text>
       </View>
 
@@ -101,6 +123,14 @@ export function BidPad({
 
           {/* Action buttons */}
           <View style={styles.actionRow}>
+            <Pressable
+              style={[styles.actionBtn, styles.micBtn, voiceListening && styles.micBtnActive]}
+              onPress={pressMic}
+            >
+              <Text style={[styles.actionBtnText, voiceListening && styles.micBtnActiveText]}>
+                {voiceListening ? '⏹' : '🎤'}
+              </Text>
+            </Pressable>
             <Pressable
               style={[styles.actionBtn, styles.cancelBtn]}
               onPress={pressCancel}
@@ -141,6 +171,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
+  },
+  sttText: {
+    fontSize: 20,
+    fontStyle: 'italic',
+    color: '#6b7280',
   },
   padGrid: {
     flexDirection: 'row',
@@ -193,5 +228,33 @@ const styles = StyleSheet.create({
   },
   confirmTextDisabled: {
     color: '#ddd',
+  },
+  listeningIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
+  listeningDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#e53e3e',
+  },
+  listeningText: {
+    fontSize: 14,
+    color: '#e53e3e',
+    fontWeight: '600',
+  },
+  micBtn: {
+    backgroundColor: '#4a5568',
+    maxWidth: 60,
+  },
+  micBtnActive: {
+    backgroundColor: '#e53e3e',
+  },
+  micBtnActiveText: {
+    color: '#fff',
   },
 });

@@ -24,3 +24,5 @@ export type { STTCallbacks } from './stt';
 
 export { AudioPlayer } from './audio';
 export type { SFXDef } from './audio';
+
+export { parseVoiceBid } from './voiceInput';

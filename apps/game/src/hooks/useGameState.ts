@@ -26,7 +26,7 @@ import {
   legalActions,
   currentActor,
 } from 'engine';
-import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession, TTSPlayer } from 'app-core';
+import { GameSession, BanterSession, selectAllBanterLines, DEFAULT_BANTER_CONFIG, type BanterConfig as CoreBanterConfig, type DisplayBanterLine, WebSocketSession, TTSPlayer, STTPlayer, parseVoiceBid } from 'app-core';
 import { CAST_MEMBERS } from 'content';
 import { aiBid, aiPlayCard, getPlayDelay, type AIConfig } from '../utils/aiPlayer';
 
@@ -53,6 +53,8 @@ export interface UseGameStateOptions {
   ttsVolume?: number;
   /** TTS rate (0.5–2x, default 1). */
   ttsRate?: number;
+  /** Whether voice input (STT) is enabled. */
+  voiceEnabled?: boolean;
 }
 
 export interface UseGameStateReturn {
@@ -93,6 +95,12 @@ export interface UseGameStateReturn {
   isConnected: boolean;
   /** Leave the room (multiplayer mode). */
   leaveRoom: () => void;
+  /** Whether voice input (STT) is enabled. */
+  voiceEnabled: boolean;
+  /** Toggle voice input on/off. */
+  setVoiceEnabled: (enabled: boolean) => void;
+  /** Current STT interim text (live transcription). */
+  sttInterimText: string;
 }
 
 export function useGameState({
@@ -148,7 +156,48 @@ export function useGameState({
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [banterLines, setBanterLines] = useState<DisplayBanterLine[]>([]);
   const [isConnected, setIsConnected] = useState(mode === 'local' ? true : false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [sttInterimText, setSttInterimText] = useState<string>('');
   const banterSessionRef = useRef<BanterSession>(new BanterSession());
+
+  // STT player — singleton for voice input
+  const sttRef = useRef<STTPlayer | null>(null);
+
+  // Initialize STT player once
+  if (!sttRef.current) {
+    sttRef.current = new STTPlayer();
+    sttRef.current.setCallbacks({
+      onFinal: (text, confidence) => {
+        const bid = parseVoiceBid(text);
+        if (bid === 'nil') {
+          confirmNilBid();
+        } else if (typeof bid === 'number') {
+          confirmBid(bid);
+        }
+      },
+      onInterim: (text) => {
+        setSttInterimText(text.trim());
+      },
+      onEnd: () => {
+        setSttInterimText('');
+      },
+      onError: () => {
+        setSttInterimText('');
+        // Silently handled — STT shows "Listening..." state
+      },
+    });
+  }
+
+  // Start/stop STT based on voiceEnabled toggle
+  useEffect(() => {
+    const stt = sttRef.current;
+    if (!stt) return;
+    if (voiceEnabled && !stt.isListening) {
+      stt.start();
+    } else if (!voiceEnabled && stt.isListening) {
+      stt.stop();
+    }
+  }, [voiceEnabled]);
 
   // For multiplayer mode: poll for state updates
   useEffect(() => {
@@ -366,6 +415,9 @@ export function useGameState({
     banterLines,
     isConnected,
     leaveRoom,
+    voiceEnabled,
+    setVoiceEnabled,
+    sttInterimText,
   };
 }
 

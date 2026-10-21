@@ -111,19 +111,13 @@ export default function TableView() {
     [session],
   );
 
-  // Start next hand from scoreboard
-  const handleNewHand = useCallback(() => {
-    session.startNextHand();
-    router.back();
-  }, [session, router]);
-
-  // Reset to setup screen
-  const handleNewGame = useCallback(() => {
-    if (isMultiplayer) {
-      session.leaveRoom();
-    }
-    router.replace({ pathname: '(setup)' });
-  }, [router, isMultiplayer, session]);
+  // Voice input toggle
+  const handleVoiceToggle = useCallback(
+    (enabled: boolean) => {
+      session.setVoiceEnabled(enabled);
+    },
+    [session],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -149,6 +143,9 @@ export default function TableView() {
         bidPadActive={session.bidPadActive}
         bidPadValue={session.bidPadValue}
         banterLines={session.banterLines}
+        voiceEnabled={session.voiceEnabled}
+        onVoiceToggle={handleVoiceToggle}
+        sttInterimText={session.sttInterimText}
       />
     </SafeAreaView>
   );
@@ -178,8 +175,6 @@ function MuteButton() {
     >
       <Text style={styles.muteBtnText}>{muted ? '🔇' : '🔊'}</Text>
     </TouchableOpacity>
-  );
-}
   );
 }
 
