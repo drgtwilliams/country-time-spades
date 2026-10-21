@@ -52,7 +52,7 @@ The differentiator is personality, not rules: existing Spades apps are silent ca
 - **M4** Live-table server + friend invites (WebSocket authoritative server; friend-invite rooms)
 - **M5** Voice (dialect-reviewed TTS + optional on-device STT; text parity always)
 
-**Status: M1 ✅ complete — 142 tests green. M2 ✅ complete — full playable loop. M3 ✅ complete — 6-char cast, 14/14 events, banter. M4 ✅ complete — server + rooms + lobby + multiplayer table. M5 not started.**
+**Status: M1 ✅ complete — 142 tests green. M2 ✅ complete — full playable loop. M3 ✅ complete — 6-char cast, 14/14 events, banter. M4 ✅ complete — server + rooms + lobby + multiplayer table. M5 in progress — M5.1 (TTS infra), M5.2 (STT bid), M5.3 (announcer + SFX) implemented. M5.5 user gate pending.**
 
 ## Conventions & guardrails
 
