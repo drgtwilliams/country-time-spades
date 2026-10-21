@@ -1,2 +1,3 @@
 - [M1 Rules Engine Complete](m1-rules-engine-complete.md) — pure TS engine, 142 tests, 12 house-rule presets, 85%+ coverage
 - [M2 Playable Table Complete](m2-playable-table-complete.md) — AI table, pass-and-play, setup screen, scoreboard, expo-router web + iOS
+- [M3 Personality Layer Complete](m3-personality-layer-complete.md) — 6-character cast, 14/14 event phrases, banter selector, SpeechBubble integration
