@@ -6,10 +6,11 @@
  * - Bid pad state machine
  * - Card selection for trick play
  * - AI auto-play with configurable delays
+ * - Banter selector — engine events → character phrases → display queue
  * - Legal action filtering
  *
  * M2: basic session + bid pad + card selection + AI auto-play.
- * M3: banter events, relationship-aware AI, announcer queue.
+ * M3: banter integration — events → phrases → speech bubbles.
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -19,10 +20,19 @@ import {
   type BidAction,
   type PlayAction,
   type EngineEvent,
+  type Seat,
   legalActions,
   currentActor,
 } from 'engine';
 import { GameSession, type GameSessionOptions } from 'app-core';
+import {
+  BanterSession,
+  selectAllBanterLines,
+  DEFAULT_BANTER_CONFIG,
+  type BanterConfig as CoreBanterConfig,
+  type DisplayBanterLine,
+} from 'app-core';
+import { CAST_MEMBERS } from 'content';
 import { aiBid, aiPlayCard, getPlayDelay, type AIConfig } from '../utils/aiPlayer';
 
 export interface UseGameStateOptions {
@@ -34,6 +44,8 @@ export interface UseGameStateOptions {
   aiConfig?: AIConfig;
   /** Whether AI plays automatically (true = full AI table). */
   aiAutoPlay?: boolean;
+  /** Banter configuration. Set to null to disable banter. */
+  banterConfig?: CoreBanterConfig | null;
 }
 
 export interface UseGameStateReturn {
@@ -68,6 +80,8 @@ export interface UseGameStateReturn {
   startNextHand: () => EngineEvent[];
   /** Whether the table is all-AI (no human player). */
   isAITable: boolean;
+  /** Active banter lines for display. */
+  banterLines: readonly DisplayBanterLine[];
 }
 
 export function useGameState({
@@ -87,6 +101,8 @@ export function useGameState({
   const [events, setEvents] = useState<readonly EngineEvent[]>([]);
   const [bidPadValue, setBidPadValue] = useState(0);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [banterLines, setBanterLines] = useState<DisplayBanterLine[]>([]);
+  const banterSessionRef = useRef<BanterSession>(new BanterSession());
 
   // Whether it's the human's turn right now
   const isHumanTurn = useMemo(() => {
@@ -147,6 +163,50 @@ export function useGameState({
     }
   }, [legalCards, doAction]);
 
+  // Banter effect — process engine events into character banter lines
+  useEffect(() => {
+    const banterConfig = banterConfigOpt;
+    if (!banterConfig) return;
+
+    const session = sessionRef.current;
+    if (!session) return;
+
+    // Process each event that produced banter
+    for (const event of events) {
+      if (event.type === 'BidMade' || event.type === 'Bid') continue; // bidding handled separately
+
+      // Determine which seats are active
+      const activeSeats: Seat[] = [0, 1, 2, 3];
+
+      // Build seat-to-cast mapping
+      const seatToCastIndex: Record<Seat, number> = { 0: 0, 1: 1, 2: 2, 3: 3 };
+
+      // Select banter lines
+      const lines = selectAllBanterLines(
+        event,
+        seatToCastIndex,
+        activeSeats,
+        banterSessionRef.current,
+        banterConfig,
+      );
+
+      if (lines.length > 0) {
+        setBanterLines((prev) => {
+          // Merge: remove old lines that are still visible, add new ones
+          const combined = [...prev, ...lines];
+          // Limit stack
+          return combined.slice(-banterConfig.maxStack);
+        });
+
+        // Auto-dismiss after 3 seconds
+        const maxDuration = Math.max(...lines.map((l) => 3500));
+        setTimeout(() => {
+          setBanterLines((prev) => prev.slice(1)); // remove oldest
+        }, maxDuration);
+      }
+    }
+  }, [events]);
+
   // AI auto-play effect
   useEffect(() => {
     if (!aiAutoPlay) return;
@@ -196,5 +256,6 @@ export function useGameState({
     doAction,
     startNextHand,
     isAITable: humanSeat < 0,
+    banterLines,
   };
 }

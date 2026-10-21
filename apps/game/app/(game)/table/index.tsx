@@ -47,6 +47,7 @@ export default function TableView() {
     humanSeat,
     aiAutoPlay: !passAndPlay,
     aiConfig: { playDelay: 1200, bidNoise: 0.1, smartBreak: true },
+    banterConfig: { density: 'medium', cooldownMs: 3000, maxStack: 3 },
   });
 
   const [previousPhase, setPreviousPhase] = useState<Phase | null>(null);
@@ -118,6 +119,7 @@ export default function TableView() {
         onBlindNilBid={handleBlindNilBid}
         bidPadActive={session.bidPadActive}
         bidPadValue={session.bidPadValue}
+        banterLines={session.banterLines}
       />
     </SafeAreaView>
   );

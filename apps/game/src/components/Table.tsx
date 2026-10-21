@@ -42,6 +42,8 @@ export interface TableProps {
   bidPadActive: boolean;
   /** Current bid pad value. */
   bidPadValue: number;
+  /** Active banter lines from M3 personality layer. */
+  banterLines?: import('app-core').DisplayBanterLine[];
 }
 
 /** Default AI player names for M2. */
@@ -63,6 +65,7 @@ export function Table({
   onBlindNilBid,
   bidPadActive,
   bidPadValue,
+  banterLines = [],
 }: TableProps) {
   const { phase, dealer, bids, hands, currentTrick, spadesBroken, handNumber } = gameState;
 
@@ -203,8 +206,18 @@ export function Table({
         </View>
       </View>
 
-      {/* Speech bubble zone */}
-      <View style={styles.bubbleZone} />
+      {/* Speech bubble zone — banter lines from M3 personality layer */}
+      <View style={styles.bubbleZone}>
+        {banterLines.map((line, i) => (
+          <SpeechBubble
+            key={`${line.id}-${i}`}
+            text={line.text}
+            visible={true}
+            offset={{ x: 100 + (line.seat ?? 0) * 30, y: 30 + i * 50 }}
+            duration={3000}
+          />
+        ))}
+      </View>
     </SafeAreaView>
   );
 
